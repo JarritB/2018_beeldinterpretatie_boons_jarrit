@@ -11,9 +11,13 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
+				<Option parameters="-ig=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_Beeldinterpretatie_Boons_Jarrit/sessie_0/test.png  -ic=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_Beeldinterpretatie_Boons_Jarrit/sessie_0/testColor.png" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
+				<Linker>
+					<Add option="`pkg-config opencv --libs`" />
+				</Linker>
 			</Target>
 			<Target title="Release">
 				<Option output="bin/Release/sessie0" prefix_auto="1" extension_auto="1" />
@@ -32,6 +36,9 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
+		<Linker>
+			<Add option="`pkg-config --libs /usr/local/lib/pkg-config/opencv/opencv.pc `" />
+		</Linker>
 		<Unit filename="main.cpp" />
 		<Extensions>
 			<code_completion />
