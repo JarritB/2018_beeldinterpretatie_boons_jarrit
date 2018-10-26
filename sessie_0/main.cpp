@@ -64,7 +64,7 @@ int main(int argc,const char** argv)
     }
     ///print pixelvalue of grayscaled image using dubble iteration
 
-    Mat canvas = Mat::zeros(256,256,CV_8UC3);
+    Mat canvas = Mat::zeros(256,256,CV_8UC3);//create empty matrix:res 256x256,filled black,3 channels,1byte
 
     line(canvas,Point(20,140),Point(236,20),Scalar(255,255,255),5);//white line
     circle(canvas,Point(128,128),30,Scalar(0,255,255),3);//yellow circle
