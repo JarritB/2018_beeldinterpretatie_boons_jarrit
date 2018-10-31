@@ -119,53 +119,77 @@ int main(int argc,const char** argv)
     waitKey(0);
     destroyAllWindows();
 
+    ///*******************************************************************************
+
     ///1.2
-    Mat bgr[3];    //new matrix to save channels in
     split(img3,bgr); //splits img into BGR
     Mat mask = Mat::zeros(img3.rows,img1.cols,CV_8UC1);
-    mask1 = (bgr[2]>95) & (bgr[1]>40) & (bgr[0]>20) & ((max(bgr[2],max(bgr[1],bgr[0])) - min(bgr[2],min(bgr[1],bgr[0])))>15) & (abs(bgr[2]-bgr[1])>15) & (bgr[2]>bgr[1]) & (bgr[2]>bgr[0]);
+    mask = (bgr[2]>95) & (bgr[1]>40) & (bgr[0]>20) & ((max(bgr[2],max(bgr[1],bgr[0])) - min(bgr[2],min(bgr[1],bgr[0])))>15) & (abs(bgr[2]-bgr[1])>15) & (bgr[2]>bgr[1]) & (bgr[2]>bgr[0]);
     ///gives binary values
     mask *= 255; //make ones white
     imshow("Huidskleursmasker",mask);
     waitKey(0);
     destroyAllWindows();
     ///print mask
-    Mat resimg;
-    img1.copyTo(resimg,mask1); //apply mask to original img
+    img1.copyTo(resimg,mask); //apply mask to original img
     imshow("Resulterende pixels",resimg);
     ///print resulting img
     waitKey(0);
     destroyAllWindows();
-    /*TODO
-    ruis weg
+
+
     erode(mask,mask,Mat(),Point(-1,-1),2);
     dilate(mask,mask,Mat(),Point(-1,-1),2);
-    conn blob
+    ///remove noise
+    imshow("Remove noise",mask);
+    ///print resulting img
+    waitKey(0);
+    destroyAllWindows();
+
     dilate(mask,mask,Mat(),Point(-1,-1),5);
     erode(mask,mask,Mat(),Point(-1,-1),5);
+    ///connect blob
+    imshow("Remove noise and connect blobs",mask);
+    ///print resulting img
+    waitKey(0);
+    destroyAllWindows();
 
-    convex hull approach
+
+
+
+    ///convex hull approach
     vector<vector<Point>> contours;
-    findcountours
-    convex hull approach
+    findContours(mask,contours,RETR_EXTERNAL,CHAIN_APPROX_NONE); //finds and accents contours
+    ///convex hull approach
+    vector<vector<Point>> hulls;
     for(size_t i=0;i<contours.size();i++){
-        vector<Point>=hull;
+        vector<Point> hull;
         convexHull(contours[i],hull);
         hulls.push_back(hull);
     }
-    teken gevulde hulls
-    Mat fin(img.rows,img.cols,CV_8UC3);
-    Mat red = bgr[0] & mask;
-    Mat blue = bgr[1] & mask;
-    mat green = bgr[2] & mask;
-
-    Mat in[] = {blue,red,green};
-    int from_to[] = {0,0,1,1,2,2};
-    mixChannels(in,3,finaal)
-
-    */
+    drawContours(mask,hulls,-1,255,-1);
+    ///Draw filled hulls
+    imshow("hulls",mask);
+    ///print resulting img
     waitKey(0);
-    ///wait for user input to show images
+
+    Mat colored_hulls;
+    vector<Mat> fin;
+    Mat Blue = bgr[0] & mask;
+    Mat Green = bgr[1] & mask;
+    Mat Red = bgr[2] & mask;
+    fin.push_back(Blue);
+    fin.push_back(Green);
+    fin.push_back(Red);
+
+    merge(fin, colored_hulls);
+
+    imshow("Hulls on img!",colored_hulls);
+    waitKey(0);
+
+
+
+    waitKey(0);
 }
 
 

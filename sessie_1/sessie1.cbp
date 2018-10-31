@@ -11,7 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-i1=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_1/imageColor.jpg  -i2=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_1/imageBimodal.jpg -i3=/home/jarrit24/Documents/School/beeldinterpretatie/2018_Beeldinterpretatie_boons_jarrit/sessie_1/imageColorAdapted.jpg" />
+				<Option parameters="-i1=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_1/imageColor.jpg  -i2=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_1/imageBimodal.jpg -i3=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_1/imageColorAdapted.jpg" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
