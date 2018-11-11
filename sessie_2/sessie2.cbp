@@ -2,7 +2,7 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="sessie1" />
+		<Option title="sessie2" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
@@ -11,7 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-i1=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_1/imageColor.jpg  -i2=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_1/imageBimodal.jpg -i3=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_1/imageColorAdapted.jpg" />
+				<Option parameters="-i1=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_2/sign.jpg  -i2=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_2/sign2.jpg -i3=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_2/sign3.jpg -i4=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_2/sign4.jpg  " />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
