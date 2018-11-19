@@ -188,6 +188,7 @@ int main(int argc,const char** argv)
         dilate(mask, mask, Mat(), Point(-1, -1), 5);
         erode(mask, mask, Mat(), Point(-1, -1), 5);// dilate and erode to connect blobs
         res = mask;
+
         img[0].copyTo(res,mask); //apply mask to original img
         imshow("Sliders",res); //show result
         int key = waitKey(10);
