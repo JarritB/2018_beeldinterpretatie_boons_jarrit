@@ -1,11 +1,31 @@
 #include <iostream>
+#include <string>
 #include <opencv2/opencv.hpp>   //project->linkersettings -> other -> `pkg-config opencv --libs`
 
 using namespace std;
 using namespace cv; //in this order
 const float PI = 3.14159265359;
 const int ASTEP = 10;
-bool skip = false;
+const String NAME = "All Rotated & Matched templates";
+int thresholdValue = 90;
+int maxAngleValue = 0;
+int slider_th = 90;
+int slider_an = 0;
+
+Mat RotMatch(void);
+Mat img[3],res;
+
+static void on_trackbar1(int, void*)
+{
+    thresholdValue = slider_th; //set the global variable h1 to the current slidervalue;
+}
+
+//functions needed for the rotatingmarch trackbars
+static void on_trackbar2(int, void*)
+{
+    maxAngleValue = slider_an;
+}
+
 
 
 // Return the rotation matrices for each rotation
@@ -44,7 +64,7 @@ int main(int argc,const char** argv)
     }
     ///check given arguments
 
-    Mat img[3];
+
     img[0] = imread(image_1_location); //template
     img[1] = imread(image_2_location); //straight
     img[2] = imread(image_3_location); //rotated
@@ -64,7 +84,7 @@ int main(int argc,const char** argv)
     }
     ///stop if any of the images is read wrongly and return which one
 
-    Mat res,matched=img[1].clone(),amatched=img[1].clone(),rmatched=img[2].clone();
+    Mat matched=img[1].clone(),amatched=img[1].clone();
 
     matchTemplate(img[1],img[0],res,TM_SQDIFF);
     normalize(res,res,0,1,NORM_MINMAX,-1,Mat());
@@ -103,9 +123,32 @@ int main(int argc,const char** argv)
     destroyAllWindows();
     ///Found multiple template matches
 
+    namedWindow(NAME); // Create Window
+    resizeWindow(NAME, 200, 200);//resize it (it gets auto-sized later)'
+    createTrackbar("Maximum angle", NAME, &slider_an, 360, on_trackbar2);
+    createTrackbar("Threshold", NAME, &slider_th, 100, on_trackbar1);
+    Mat resultimage;
+    cout << "press esc to exit";
+    while (true)
+    {
+        Mat result = img[2].clone();
+        result = RotMatch();   //segment the image using the hsvsegment_mat function (which also used the values h1,h2,s1)
 
+        imshow(NAME,result); //show result
+        int key = waitKey(10);
+
+        if (key == 27) //exit if ESC is pressed
+        {
+            return 0;
+        }
+    }
+}
+
+Mat RotMatch()
+{
+    Mat rmatched=img[2].clone();
     vector<Mat> rotated;
-    for(int angle=1; angle<=180;angle+= ASTEP)
+    for(int angle=0; angle <= maxAngleValue;angle+= ASTEP)
     {
         Mat rot = img[2].clone();
         rotate(rot,angle,rot);
@@ -116,17 +159,23 @@ int main(int argc,const char** argv)
     {
         vector<Rect> obj;
         vector<vector<Point>> contours;
-        matchTemplate( rotated[i], img[0], res, TM_CCOEFF_NORMED);
-        normalize(res, res, 0, 1, NORM_MINMAX, -1, Mat());
-        Mat thr;
-        inRange(res, 0.999999, 1, thr);
-        thr *= 255;
-        thr.convertTo(thr,CV_8UC1);
+        matchTemplate(rotated[i], img[0], res, TM_CCOEFF_NORMED);
+        normalize(res, res, 0, 1, NORM_MINMAX,-1);
 
-        findContours(thr,contours, RETR_EXTERNAL,CHAIN_APPROX_NONE);
+        Mat mask = Mat::zeros(Size(img[2].cols, img[2].rows), CV_8UC1);
+        inRange(res, thresholdValue/100.0, 1, mask);
+        findContours(mask,contours, RETR_EXTERNAL,CHAIN_APPROX_NONE);
         for (int j = 0; j < contours.size(); j++)
         {
-                obj.push_back(boundingRect(contours[j]));
+
+            vector<Point> hull;
+            convexHull(contours[j], hull);
+            Rect rect = boundingRect(hull);
+            Point location;
+            minMaxLoc(res(rect), NULL, NULL, NULL, &location);
+            Point c(location.x + rect.x, location.y + rect.y);
+            Rect rect2(c, c + Point(img[0].cols,img[0].rows));
+            obj.push_back(rect2);
         }
         detected.push_back(obj);
     }
@@ -143,7 +192,7 @@ int main(int argc,const char** argv)
             Mat coordinates = (Mat_<double>(3,4) << p1.x, p2.x, p3.x, p4.x,p1.y, p2.y, p3.y, p4.y,1 , 1 , 1 , 1 );
 
             Point2f pt(rmatched.cols/2.,rmatched.rows/2.);
-            Mat r = getRotationMatrix2D(pt,-(ASTEP*(i+1)),1.0);
+            Mat r = getRotationMatrix2D(pt,-(ASTEP*(i)),1.0);
             Mat result = r * coordinates;
 
             Point p1_back, p2_back, p3_back, p4_back;
@@ -166,19 +215,9 @@ int main(int argc,const char** argv)
             line(rmatched, p4_back, p1_back, Scalar(0,0,255), 3);
 
         }
-        if(!skip)
-        {
-            imshow( "All Rotated & Matched templates", rmatched );
-            int k = waitKey(0);
-            if(k == 27)
-            {
-                skip = true;
-            }
-            destroyAllWindows();
-        }
+
     }
-    imshow( "All Rotated & Matched templates", rmatched );
-    waitKey(0);
+    return rmatched;
 
     /**rotate the image and apply the template match
     Algorithm based on code found at https://github.com/OpenCVBlueprints/OpenCVBlueprints/blob/master/chapter_5/source_code/rotation_invariant_detection/rotation_invariant_object_detection.cpp
