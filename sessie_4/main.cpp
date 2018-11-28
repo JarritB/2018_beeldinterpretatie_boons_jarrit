@@ -12,6 +12,7 @@ Mat img[4],res;
 
 void keyPointMatching(Mat obj,Mat img);
 void bruteForceMatching(Mat obj,Mat img);
+void ranSacMatching(Mat obj,Mat img);
 
 static void on_trackbar1(int, void*)
 {
@@ -76,7 +77,8 @@ int main(int argc,const char** argv)
     ///stop if any of the images is read wrongly and return which one
 
     //keyPointMatching(img[0],img[1]);
-    bruteForceMatching(img[0],img[1]);
+    //bruteForceMatching(img[0],img[1]);
+    ranSacMatching(img[0],img[1]);
 
 }
 
@@ -145,21 +147,73 @@ void bruteForceMatching(Mat obj,Mat img)
     orb->detectAndCompute(obj,Mat(),kp1,des1);
     orb->detectAndCompute(img,Mat(),kp2,des2);
 
-    Ptr<BFMatcher> bfm = BFMatcher::create();
-    vector<vector<DMatch>> matches;
+    BFMatcher bfm = BFMatcher(NORM_L2);
+    std::vector<DMatch> matches;
 
-    bfm->knnMatch(des1,des2,matches,2);
+    bfm.match(des1,des2,matches);
     drawMatches(obj,kp1,img,kp2,matches,res);
 
     imshow("Matches",res);
     waitKey(0);
     destroyAllWindows();
-
-    double max_dist=0,min_dist=100;
-    for(int i=0;i<des1.rows;i++)
-    {
-
-    }
 }
 
+void ranSacMatching(Mat obj,Mat img)
+{
+    vector<KeyPoint> kp1,kp2;
+    Mat res;
+    Mat des1,des2;
+
+    Ptr<ORB> orb = ORB::create();
+    orb->detectAndCompute(obj,Mat(),kp1,des1);
+    orb->detectAndCompute(img,Mat(),kp2,des2);
+
+    BFMatcher bfm = BFMatcher(NORM_L2);
+    std::vector<DMatch> matches;
+
+    bfm.match(des1,des2,matches);
+
+    sort(matches.begin(),matches.end()); //sort matches by distance
+    matches.erase(matches.begin()+matches.size()*0.15, matches.end()); // only keep matches
+
+
+    drawMatches(obj, kp1, img, kp2, matches, res);
+
+    vector<Point2f> objectLoc;
+    vector<Point2f> inputLoc;
+
+    for(int i=0; i < matches.size(); i++)
+    {
+        objectLoc.push_back(kp1[matches[i].queryIdx].pt);
+        inputLoc.push_back(kp2[matches[i].trainIdx].pt);
+    }
+
+    Mat H = findHomography(objectLoc, inputLoc, RANSAC);
+
+    // Find the corners of the object image
+    vector<Point2f> sceneCorners(4),objectCorners(4);
+
+    objectCorners[0] = cvPoint(0,0);
+    objectCorners[1] = cvPoint(obj.cols, 0 );
+    objectCorners[2] = cvPoint(obj.cols, obj.rows);
+    objectCorners[3] = cvPoint(0, obj.rows);
+
+
+    // Transform to scene
+    perspectiveTransform(objectCorners, sceneCorners, H);
+
+    // Draw a box around the object in the scene
+    RNG rng(12345);
+    Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+    line(res, sceneCorners[0] + Point2f(obj.cols, 0), sceneCorners[1] + Point2f(obj.cols, 0), color, 4);
+    line(res, sceneCorners[1] + Point2f(obj.cols, 0), sceneCorners[2] + Point2f(obj.cols, 0), color, 4);
+    line(res, sceneCorners[2] + Point2f(obj.cols, 0), sceneCorners[3] + Point2f(obj.cols, 0), color, 4);
+    line(res, sceneCorners[3] + Point2f(obj.cols, 0), sceneCorners[0] + Point2f(obj.cols, 0), color, 4);
+
+
+    imshow("Matches",res);
+    waitKey(0);
+    destroyAllWindows();
+
+}
 
