@@ -1,0 +1,6 @@
+# depslib dependency file v1.0
+1543566831 source:/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_5/main.cpp
+	<iostream>
+	<string>
+	<opencv2/opencv.hpp>
+
