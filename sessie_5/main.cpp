@@ -123,7 +123,7 @@ int main(int argc,const char** argv)
 
     Mat hsv = img[0].clone();
     cvtColor(hsv, hsv, COLOR_BGR2HSV);  //convert to HSV
-    GaussianBlur(hsv, hsv,Size(5,5),0);     //blur the image to ensure no wrong pixels can be selected by mistake
+    GaussianBlur(hsv, hsv,Size(5,5),1);     //blur the image to ensure no wrong pixels can be selected by mistake
 
 
     Mat traindata(pixels[0].size()+pixels[1].size(), 3, CV_32FC1);
@@ -138,38 +138,36 @@ int main(int argc,const char** argv)
 
     for (int i = 0; i < pixels[0].size(); i++)
     {
-
-        Vec3b hsv_values = hsv.at<Vec3b>(pixels[0][i].y, pixels[0][i].x);
-        traindata.at<float>(i, 0) = hsv_values.val[0];
-        traindata.at<float>(i, 1) = hsv_values.val[1];
-        traindata.at<float>(i, 2) = hsv_values.val[2];
+        Vec3b hsv_pixels = hsv.at<Vec3b>(pixels[0][i].y, pixels[0][i].x);
+        traindata.at<float>(i, 0) = hsv_pixels.val[0];
+        traindata.at<float>(i, 1) = hsv_pixels.val[1];
+        traindata.at<float>(i, 2) = hsv_pixels.val[2];
         labels.at<int>(i) = 1;
     }
     ///use the positive values as training data with label 1
 
     for (int i = 0; i < pixels[1].size(); i++)
     {
-
-        Vec3b hsv_values = hsv.at<Vec3b>(pixels[1][i].y, pixels[1][i].x);
-
-        traindata.at<float>(i, 0) = hsv_values.val[0];
-        traindata.at<float>(i, 1) = hsv_values.val[1];
-        traindata.at<float>(i, 2) = hsv_values.val[2];
-        labels.at<int>(i) = 0;
+        int j = i+pixels[0].size();
+        Vec3b hsv_pixels = hsv.at<Vec3b>(pixels[1][i].y, pixels[1][i].x);
+        traindata.at<float>(j, 0) = hsv_pixels.val[0];
+        traindata.at<float>(j, 1) = hsv_pixels.val[1];
+        traindata.at<float>(j, 2) = hsv_pixels.val[2];
+        labels.at<int>(j) = 0;
     }
     ///use the negative values as training data with label 0
-    cout << traindata.size() << endl;
+
     Mat samples(hsv.rows*hsv.cols, 3, CV_32FC1);
     for (int row = 0; row < hsv.rows; row++)
     {
         for (int col = 0; col < hsv.cols; col++)
         {
-            int index = row*hsv.cols + col;
+            int j = row*hsv.cols + col;
 
-            Vec3b hsv_values = hsv.at<Vec3b>(col, row);
-            samples.at<float>(index, 0) = hsv_values.val[0];
-            samples.at<float>(index, 1) = hsv_values.val[1];
-            samples.at<float>(index, 2) = hsv_values.val[2];
+            Vec3b hsv_pixels = hsv.at<Vec3b>(col, row);
+            samples.at<float>(j, 0) = hsv_pixels.val[0];
+            samples.at<float>(j, 1) = hsv_pixels.val[1];
+            samples.at<float>(j, 2) = hsv_pixels.val[2];
         }
     }
     ///load in all the pixel from the image as sample values
