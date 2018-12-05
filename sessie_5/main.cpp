@@ -164,16 +164,16 @@ int main(int argc,const char** argv)
         {
             int j = row*hsv.cols + col;
 
-            Vec3b hsv_pixels = hsv.at<Vec3b>(col, row);
+            Vec3b hsv_pixels = hsv.at<Vec3b>(row,col);
             samples.at<float>(j, 0) = hsv_pixels.val[0];
             samples.at<float>(j, 1) = hsv_pixels.val[1];
             samples.at<float>(j, 2) = hsv_pixels.val[2];
         }
     }
     ///load in all the pixel from the image as sample values
-    //knear(traindata,labels,samples,hsv,img[0]);
+    knear(traindata,labels,samples,hsv,img[0]);
     //bayes(traindata,labels,samples,img[0]);
-    svm(traindata,labels,samples,img[0]);
+    //svm(traindata,labels,samples,img[0]);
 
 }
 
