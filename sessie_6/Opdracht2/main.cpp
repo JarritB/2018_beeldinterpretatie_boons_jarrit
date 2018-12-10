@@ -6,10 +6,13 @@ using namespace std;
 using namespace cv; //in this order
 const string CASNAMEH = "haarcascade_frontalface_alt.xml";
 const string CASNAMEL = "lbpcascade_frontalface_improved.xml";
-const int SCALE=1;
+const float THRESH = 1.5;
+const int SCALE=2;
 bool lbp = 0;
 string mode="HAAR";
-void detectAndDraw( Mat img, CascadeClassifier cascade,Scalar color);
+vector<Point> traject;
+
+void detectAndDraw( Mat img, HOGDescriptor hog,Scalar color);
 
 int main(int argc,const char** argv)
 {
@@ -49,25 +52,21 @@ int main(int argc,const char** argv)
         return -1;
     }
     ///stop if any of the videos is read wrongly and return which one
-    bool tryflip;
-    CascadeClassifier cascadehaar,cascadelbp;
-    double scale = 1;
-    cascadehaar.load(CASNAMEH);
-    cascadelbp.load(CASNAMEL);
+    HOGDescriptor hog;
+    vector<Point> traject;
+    hog.setSVMDetector(HOGDescriptor::getDefaultPeopleDetector());
     while(1)
     {
 
         Mat frame;
         // Capture frame-by-frame
-        cap[0] >> frame;
+        cap[1] >> frame;
 
         // If the frame is empty, break immediately
         if (frame.empty())
             break;
-        if(lbp)
-            detectAndDraw( frame.clone(), cascadelbp,Scalar(255,0,0));
-        else
-            detectAndDraw( frame.clone(), cascadehaar,Scalar(0,0,255));
+        resize(frame, frame, Size(SCALE*frame.cols, SCALE*frame.rows));
+        detectAndDraw(frame,hog,Scalar(0,0,255));
         // Press  ESC on keyboard to exit
         char c=(char)waitKey(25);
         if(c==27)
@@ -76,7 +75,7 @@ int main(int argc,const char** argv)
         {
             for(int i=0;i<20;i++)
             {
-                cap[0] >> frame;
+                cap[1] >> frame;
             }
         }
         if(c==32)
@@ -84,51 +83,41 @@ int main(int argc,const char** argv)
     }
     ///play video frame by frame source:https://www.learnopencv.com/read-write-and-display-a-video-using-opencv-cpp-python/
     ///for each frame execute frame detection
-    ///--differnce between HAAR en LBP: tradoff accuracy for speed
+    ///video plays very slowly because the calculations takes a certain amount of time during which the frame wont proceed
 
 }
 
-void detectAndDraw( Mat img, CascadeClassifier cascade,Scalar color)
+void detectAndDraw( Mat img, HOGDescriptor hog,Scalar color)
 {
-    double t = 0;
-    vector<Rect> faces, faces2;
-    vector<int> rejects;
+    vector<Rect> detections;
     vector<double> weights;
-    Mat gray, smallImg;
-    cvtColor( img, gray, COLOR_BGR2GRAY );
-    double fx = 1 / SCALE;
-    resize( gray, smallImg, Size(), fx, fx, INTER_LINEAR_EXACT );
-    equalizeHist( smallImg, smallImg );
-    cascade.detectMultiScale( smallImg, faces,
-        1.1, 2, 0
-        |CASCADE_SCALE_IMAGE,
-        Size(30, 30) );
-    cascade.detectMultiScale(smallImg, faces, rejects,weights, 1.1, 2,0, Size(), Size(), true);
-    for ( size_t i = 0; i < faces.size(); i++)
+
+
+    hog.detectMultiScale(img,detections,weights);
+    ///detect the person
+    for (int i = 0; i < detections.size(); i++)
     {
-        Rect r = faces[i];
-        Mat smallImgROI;
         Point center;
         int radius;
-        double aspect_ratio = (double)r.width/r.height;
-        if( 0.75 < aspect_ratio && aspect_ratio < 1.3 )
+        Rect r = detections.at(i);
+        if(weights.at(i) >= THRESH)
         {
-            center.x = cvRound((r.x + r.width*0.5)*SCALE);
-            center.y = cvRound((r.y + r.height*0.5)*SCALE);
-            radius = cvRound((r.width + r.height)*0.25*SCALE);
-            circle( img, center, radius, color,2);
-            putText(img, std::to_string(weights[i]),
-                        Point(center.x, center.y-1.2*radius), 1, 2,color,2);
-
+            center.x = cvRound((r.x + r.width*0.5));
+            center.y = cvRound((r.y + r.height*0.5));
+            traject.push_back(center);
+            putText(img, std::to_string(weights[i]),Point(center.x+r.width, center.y), 1, 2,color,2);
+            rectangle(img,r,color,2);
         }
-        smallImgROI = smallImg(r);
 
     }
-    if(lbp)
-        mode = "LBP";
-    else
-        mode = "HAAR";
-    putText(img, mode,Point(20,20), 1, 2,color,2);
-    imshow( "Facedetection (esc:exit | enter:skip 20 frames | space:switch mode)", img );
+    ///draw the bounding box and show the score
+
+    for(int i=1;i<traject.size();i++)
+    {
+        line(img,traject.at(i),traject.at(i-1),color,2);
+    }
+    ///draw a line following the persons trajectory, only works for one person
+
+    imshow( "Person detection (esc:exit | enter:skip 20 frames | space:switch mode)", img );
 }
 

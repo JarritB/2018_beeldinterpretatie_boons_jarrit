@@ -11,7 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="-v1=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_6/faces.mp4  -v2=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_6/people.mp4" />
+				<Option parameters="-v1=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_6/Opdracht1/faces.mp4  -v2=/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/sessie_6/Opdracht1/people.mp4" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>

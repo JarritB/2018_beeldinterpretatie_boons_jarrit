@@ -90,24 +90,17 @@ int main(int argc,const char** argv)
 
 void detectAndDraw( Mat img, CascadeClassifier cascade,Scalar color)
 {
-    double t = 0;
+
     vector<Rect> faces, faces2;
     vector<int> rejects;
     vector<double> weights;
     Mat gray, smallImg;
     cvtColor( img, gray, COLOR_BGR2GRAY );
-    double fx = 1 / SCALE;
-    resize( gray, smallImg, Size(), fx, fx, INTER_LINEAR_EXACT );
-    equalizeHist( smallImg, smallImg );
-    cascade.detectMultiScale( smallImg, faces,
-        1.1, 2, 0
-        |CASCADE_SCALE_IMAGE,
-        Size(30, 30) );
-    cascade.detectMultiScale(smallImg, faces, rejects,weights, 1.1, 2,0, Size(), Size(), true);
+    equalizeHist( gray, gray );
+    cascade.detectMultiScale(gray, faces, rejects,weights, 1.1, 2,0, Size(), Size(), true);
     for ( size_t i = 0; i < faces.size(); i++)
     {
         Rect r = faces[i];
-        Mat smallImgROI;
         Point center;
         int radius;
         double aspect_ratio = (double)r.width/r.height;
@@ -117,11 +110,8 @@ void detectAndDraw( Mat img, CascadeClassifier cascade,Scalar color)
             center.y = cvRound((r.y + r.height*0.5)*SCALE);
             radius = cvRound((r.width + r.height)*0.25*SCALE);
             circle( img, center, radius, color,2);
-            putText(img, std::to_string(weights[i]),
-                        Point(center.x, center.y-1.2*radius), 1, 2,color,2);
-
+            putText(img, std::to_string(weights[i]),Point(center.x, center.y-1.2*radius), 1, 2,color,2);
         }
-        smallImgROI = smallImg(r);
 
     }
     if(lbp)
