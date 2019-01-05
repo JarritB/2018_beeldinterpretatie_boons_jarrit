@@ -91,13 +91,14 @@ int main(int argc,const char** argv)
 void detectAndDraw( Mat img, CascadeClassifier cascade,Scalar color)
 {
 
-    vector<Rect> faces, faces2;
+    vector<Rect> faces;
     vector<int> rejects;
     vector<double> weights;
     Mat gray, smallImg;
     cvtColor( img, gray, COLOR_BGR2GRAY );
     equalizeHist( gray, gray );
     cascade.detectMultiScale(gray, faces, rejects,weights, 1.1, 2,0, Size(), Size(), true);
+    ///execute the detection with given classifier which returns detected objects and the score
     for ( size_t i = 0; i < faces.size(); i++)
     {
         Rect r = faces[i];
