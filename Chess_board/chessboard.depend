@@ -1,6 +1,7 @@
 # depslib dependency file v1.0
-1546748348 source:/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/Chess_board/main.cpp
+1546803254 source:/home/jarrit24/Documents/School/Beeldinterpretatie/2018_beeldinterpretatie_boons_jarrit/Chess_board/main.cpp
 	<iostream>
 	<string>
 	<opencv2/opencv.hpp>
+	<algorithm>
 

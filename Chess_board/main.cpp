@@ -1,27 +1,47 @@
 #include <iostream>
 #include <string>
 #include <opencv2/opencv.hpp>   //project->linkersettings -> other -> `pkg-config opencv --libs`
+#include <algorithm>
 
 using namespace std;
 using namespace cv; //in this order
 
-//global variables and constants
+//strcuts, global variables and constants
+typedef struct tile {   //structure of one tile of the board
+    Point2f p1;             // top left corner
+    Point2f p2;             // top right corner
+    Point2f p3;             // bottom left corner
+    Point2f p4;             // bottom right corner
+    char piece;             // piece that holds this position
+} Tile;
+
 int thresholdValue = 150;
 int slider_1 = 150;
 float dth = 5;
 int nth = 8;
-int slider_2 = 2;
+int slider_2 = 1;
 const string WNAME = "Finding keypoints, Enter to continue";
 const string WNAME2 = "Add (LMB) remove(RMB) continue(ENTER)";
+const string WNAME3 = "Select leftmost point (LMB)";
+const string WNAME4 = "Select the one right under (LMB)";
+Point2f lmp;
+Point2f ulmp;
 vector<Point2f> lock;
-bool changed = 0;
-
+bool changed = false;
+bool proceed = false;
+bool proceed2 = false;
+Rect ROI;
+Tile Board[64];
 
 
 //functions
 void detectBoard(Mat img);
 vector<Point2f> selectPoints(vector<Point2f> corners);
 bool removePoint(int x,int y);
+void sortPoints();
+bool getPoint(int x,int y);
+void initBoard();
+
 
 static void on_trackbar1(int, void*)
 {
@@ -45,7 +65,6 @@ void mClick(int met,int x,int y,int flags,void *)
                 }
                 else
                 {
-                    cout <<"Point added" << endl;
                     Point temp = Point(x,y);
                     lock.push_back(temp);
                     changed = true;
@@ -64,6 +83,30 @@ void mClick(int met,int x,int y,int flags,void *)
                     cout <<"No point here" << endl;
                 }
                 break;
+            }
+            default:
+                break;
+        }
+}
+void mClick2(int met,int x,int y,int flags,void *)
+{
+        switch(met)
+        {
+            case EVENT_LBUTTONDOWN:
+            {
+                if(getPoint(x,y)){
+                    if(proceed){
+                        proceed2 = true;
+                    }
+                    else{
+                        proceed = true;
+                    }
+                }
+                else{
+                    cout <<"No point here" << endl;
+                }
+                break;
+
             }
             default:
                 break;
@@ -110,6 +153,7 @@ int main(int argc,const char** argv)
     }
     Mat frame,board,res;
     char c;
+    string pcount;
     namedWindow(WNAME);
     createTrackbar("Threshold",WNAME, &slider_1, 250, on_trackbar1);
     createTrackbar("Severity of selection",WNAME, &slider_2, 4, on_trackbar2);
@@ -124,7 +168,10 @@ int main(int argc,const char** argv)
         detectBoard(frame.clone());
         res = frame.clone();
         for( int i = 0; i < lock.size(); i++ ){
+            pcount = std::to_string(lock.size()) + "/81";
             circle(res, lock[i],4, Scalar(100,255,100),-1);
+            rectangle(res, ROI, Scalar(255,100,100),2);
+            putText(res,pcount ,Point(50,50), 1, 2,Scalar(100,255,100),1);
         }
         imshow(WNAME,res);
         c = (char)waitKey(25);
@@ -132,7 +179,7 @@ int main(int argc,const char** argv)
             cout << "Escape was pressed, program exitted.."  <<endl;
             exit(0);
         }
-        else if(c == 13){
+        else if(c == 13 && lock.size() > 70){
             destroyAllWindows();
             break;
         }
@@ -144,7 +191,10 @@ int main(int argc,const char** argv)
         if(changed){
             res = frame.clone();
             for( int i = 0; i < lock.size(); i++ ){
+                pcount = std::to_string(lock.size()) + "/81";
                 circle(res, lock[i],4, Scalar(100,255,100),-1);
+                rectangle(res, ROI, Scalar(255,100,100),2);
+                putText(res,pcount ,Point(50,50), 1, 2,Scalar(100,255,100),1);
             }
             imshow(WNAME2,res);
         }
@@ -163,6 +213,55 @@ int main(int argc,const char** argv)
 
 
     }
+    namedWindow(WNAME3,WINDOW_AUTOSIZE);
+    setMouseCallback(WNAME3,mClick2,0);
+    imshow(WNAME3,res);
+    while(1){
+        c = (char)waitKey(25);
+        if(c==27){
+            cout << "Escape was pressed, program exitted.."  <<endl;
+            exit(0);
+        }
+        if(proceed){
+            circle(res,lmp,4, Scalar(0,0,255),-1);
+            destroyAllWindows();
+            break;
+        }
+
+    }
+    namedWindow(WNAME4,WINDOW_AUTOSIZE);
+    setMouseCallback(WNAME4,mClick2,0);
+    imshow(WNAME4,res);
+    while(1){
+        c = (char)waitKey(25);
+        if(c==27){
+            cout << "Escape was pressed, program exitted.."  <<endl;
+            exit(0);
+        }
+        if(proceed2){
+            break;
+        }
+    }
+
+    sortPoints();
+    res = frame.clone();
+    for( int i = 0; i < lock.size(); i++ ){
+            putText(res,std::to_string(i),lock[i],1,1,Scalar(100,255,100),1);
+    }
+    initBoard();
+
+    res = frame.clone();
+    /*
+    for(int i=0;i<64;i++)
+    {
+        line(res,Board[i].p1,Board[i].p2,Scalar(255,255,255));
+        line(res,Board[i].p1,Board[i].p3,Scalar(255,255,255));
+        line(res,Board[i].p2,Board[i].p4,Scalar(255,255,255));
+        line(res,Board[i].p3,Board[i].p4,Scalar(255,255,255));
+    }
+    */
+    imshow("Tiles created",res);
+    waitKey(0);
 
 
 
@@ -192,6 +291,7 @@ void detectBoard(Mat img){
             big_blob = hull;
         }
     }
+    ROI = boundingRect(big_blob);
     vector<vector<Point>> temp;
     temp.push_back((big_blob));
     drawContours(mask, temp, -1, 255, -1);
@@ -203,38 +303,6 @@ void detectBoard(Mat img){
     lock = selectPoints(corners);
     cvtColor(mask,mask,CV_GRAY2BGR);
     return;
-
-   /*
-    vector<vector<Point2f>> tiles;
-    vector<Point2f> tile;
-    Point2f p;
-    for(int i=0;i<36;i++){
-        if(i%5 == 0 && i!=0)
-            continue;
-        p = corners[i];
-        tile.push_back(p);
-        p = corners[i+1];
-        tile.push_back(p);
-        p = corners[i+7];
-        tile.push_back(p);
-        p = corners[i+8];
-        tile.push_back(p);
-        tiles.push_back(tile);
-        tile.clear();
-    }
-
-    for(int i=0;i<tiles.size();i++){
-        int e = (i%2);
-        line(detected,tiles[i][0],tiles[i][1],Scalar(255*(1-e),0,255*e),2);
-        line(detected,tiles[i][0],tiles[i][2],Scalar(255*(1-e),0,255*e),2);
-        line(detected,tiles[i][1],tiles[i][3],Scalar(255*(1-e),0,255*e),2);
-        line(detected,tiles[i][2],tiles[i][3],Scalar(255*(1-e),0,255*e),2);
-    }
-
-
-    */
-
-
 }
 
 vector<Point2f> selectPoints(vector<Point2f> corners){
@@ -263,18 +331,70 @@ vector<Point2f> selectPoints(vector<Point2f> corners){
 }
 
 bool removePoint(int x,int y){
-    cout << x << endl;
-    cout << y << endl;
     Point2f p;
     for(int i=0;i<lock.size();i++){
         p = lock[i];
         if((p.x-20 < x && x < p.x+20) && (p.y-20 < y && y < p.y+20)){
             lock.erase(lock.begin() + i);
-            cout << i << endl;
-            cout << p.x-20 << endl;
-            cout << p.y << endl;
             return true;
         }
     }
     return false;
+}
+
+void sortPoints(){
+    ///using a sliding windows detect order of points from L to R and T to B
+    vector<Point2f> temp;
+    int sw = (ulmp.y-lmp.y)/2;
+
+    int xmin = ROI.tl().x + sw;
+    int xmax = xmin + ROI.width - sw;
+    int ymin = ROI.tl().y + sw;
+    int ymax = ymin + ROI.height - sw;
+    Point2f p;
+
+    for(int y=ymin;y<ymax;y += sw){
+        for(int x=xmin;x<xmax;x += sw){
+            for(int i=0;i<lock.size();i++){
+                p = lock[i];
+                if((x-sw < p.x && p.x < x+sw) && (y-sw < p.y && p.y < y+sw)){
+                    temp.push_back(p);
+                    lock.erase(lock.begin() + i);
+                }
+            }
+        }
+    }
+    cout << "Points sorted" << endl;
+    lock = temp;
+}
+bool getPoint(int x,int y){
+    Point2f p;
+    for(int i=0;i<lock.size();i++){
+        p = lock[i];
+        if((p.x-20 < x && x < p.x+20) && (p.y-20 < y && y < p.y+20)){
+            if(!proceed){
+                lmp = p;
+            }
+            else{
+                ulmp = p;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+void initBoard(){
+    int n = 0;
+    for(int i=0;i<lock.size() - 9;i++){
+        if(i%8 == 0 && i != 0){
+            continue;
+        }
+        Board[n].p1 = lock[i];
+        Board[n].p2 = lock[i+1];
+        Board[n].p2 = lock[i+8];
+        Board[n].p2 = lock[i+9];
+        n++;
+    }
+    cout << "Board initiated" << endl;
 }
