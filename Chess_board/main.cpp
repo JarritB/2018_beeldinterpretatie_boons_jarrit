@@ -6,20 +6,71 @@ using namespace std;
 using namespace cv; //in this order
 
 //global variables and constants
-const int fcbflags = CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_NORMALIZE_IMAGE + CALIB_CB_FAST_CHECK;
-const Size cbsize = Size(7,7);
-const Scalar black = Scalar(0,0,0);
-const Scalar white = Scalar(255,255,255);
 int thresholdValue = 150;
-int slider_th = 150;
+int slider_1 = 150;
+float dth = 5;
+int nth = 8;
+int slider_2 = 2;
+const string WNAME = "Finding keypoints, Enter to continue";
+const string WNAME2 = "Add (LMB) remove(RMB) continue(ENTER)";
+vector<Point2f> lock;
+bool changed = 0;
+
+
 
 //functions
-Mat detectBoard(Mat img);
+void detectBoard(Mat img);
+vector<Point2f> selectPoints(vector<Point2f> corners);
+bool removePoint(int x,int y);
 
 static void on_trackbar1(int, void*)
 {
-    thresholdValue = slider_th; //set the global variable h1 to the current slidervalue;
+    thresholdValue = slider_1; //set the global variable to the current slidervalue;
 }
+static void on_trackbar2(int, void*)
+{
+    nth = (2 + 2*slider_2); //set the global variables to the current slidervalue;
+    dth = (float)(5 + slider_2);
+}
+
+void mClick(int met,int x,int y,int flags,void *)
+{
+        switch(met)
+        {
+            case EVENT_LBUTTONDOWN:
+            {
+                if(lock.size() >= 81)
+                {
+                    cout <<"Already 81 points selected" << endl;
+                }
+                else
+                {
+                    cout <<"Point added" << endl;
+                    Point temp = Point(x,y);
+                    lock.push_back(temp);
+                    changed = true;
+                }
+                break;
+            }
+            case EVENT_RBUTTONDOWN:
+            {
+                if(removePoint(x,y))
+                {
+                    cout <<"Point removed" << endl;
+                    changed = true;
+                }
+                else
+                {
+                    cout <<"No point here" << endl;
+                }
+                break;
+            }
+            default:
+                break;
+        }
+}
+
+
 
 int main(int argc,const char** argv)
 {
@@ -57,35 +108,74 @@ int main(int argc,const char** argv)
         }
         ///check if we succeeded
     }
-    Mat frame,board,concat;
-    namedWindow("Detect chess board");
-    createTrackbar("Threshold", "Detect chess board", &slider_th, 250, on_trackbar1);
+    Mat frame,board,res;
+    char c;
+    namedWindow(WNAME);
+    createTrackbar("Threshold",WNAME, &slider_1, 250, on_trackbar1);
+    createTrackbar("Severity of selection",WNAME, &slider_2, 4, on_trackbar2);
     while(1)
     {
         cap >> frame;                   // Advance frame
 
-        if (frame.empty())              // If the frame is empty, break immediately
+        if (frame.empty()){
+            cout << "Video ended, program exitted.." <<endl;
+            exit(0);
+        }              // If the frame is empty, exit immediately
+        detectBoard(frame.clone());
+        res = frame.clone();
+        for( int i = 0; i < lock.size(); i++ ){
+            circle(res, lock[i],4, Scalar(100,255,100),-1);
+        }
+        imshow(WNAME,res);
+        c = (char)waitKey(25);
+        if(c==27){
+            cout << "Escape was pressed, program exitted.."  <<endl;
+            exit(0);
+        }
+        else if(c == 13){
+            destroyAllWindows();
             break;
-        board = detectBoard(frame.clone()
-        );
-        char c=(char)waitKey(25);
-        if(c==27)                       // Press  ESC on keyboard to exit
-            break;
-        //hconcat(frame,board,concat);
-        imshow("Detect chess board",board);
+        }
     }
+    namedWindow(WNAME2,WINDOW_AUTOSIZE);
+    setMouseCallback(WNAME2,mClick,0);
+    imshow(WNAME2,res);
+    while(1){
+        if(changed){
+            res = frame.clone();
+            for( int i = 0; i < lock.size(); i++ ){
+                circle(res, lock[i],4, Scalar(100,255,100),-1);
+            }
+            imshow(WNAME2,res);
+        }
+        c = (char)waitKey(25);
+        if(c==27){
+            cout << "Escape was pressed, program exitted.."  <<endl;
+            exit(0);
+        }
+        if(c == 13){
+            if(lock.size() == 81){
+                destroyAllWindows();
+                break;
+            }
+            cout << "You need to select the 81 points" << endl;
+        }
+
+
+    }
+
 
 
 }
 
 
-Mat detectBoard(Mat img){
+void detectBoard(Mat img){
     vector<Point2f> corners;
     Mat detected = img.clone();
     cvtColor(detected,detected,COLOR_RGB2GRAY);
     equalizeHist(detected,detected);
     normalize(detected, detected, 0, 255, NORM_MINMAX,CV_8UC1, Mat());
-    threshold(detected, detected, slider_th, 255, 0);
+    threshold(detected, detected, thresholdValue, 255, 0);
     erode(detected,detected,Mat(),Point(-1,-1),1);
     dilate(detected,detected,Mat(),Point(-1,-1),1); //erode and dilate to remove noise
 
@@ -108,42 +198,13 @@ Mat detectBoard(Mat img){
     detected.copyTo(res,mask); //apply mask to set the region of interest
     detected = res;
     Mat dst = detected.clone();
-
-    if(!findChessboardCorners(dst,cbsize,corners,fcbflags)){               //check for chess board pattern
-        putText(img,"No board detected",Point(50,50),1, 3,Scalar(0,0,255),3);
-        return img;
-    }
     mask = Mat::zeros(detected.rows,detected.cols,CV_8UC1);
-    goodFeaturesToTrack(dst,corners,90,0.01,10,Mat(),3,false,0.04 ); //apply Shi-Thomas corner detection
-    for( int i = 0; i < corners.size(); i++ ){
-        circle(mask, corners[i],3, Scalar(255),-1);
-    }
+    goodFeaturesToTrack(dst,corners,90,0.01,10,Mat(),3,false,0.04 ); //apply Shi-Thomasi corner detection
+    lock = selectPoints(corners);
+    cvtColor(mask,mask,CV_GRAY2BGR);
+    return;
 
-
-    /*
-    normalize( mask, mask, 0, 255, NORM_MINMAX, CV_32FC1, Mat());
-    convertScaleAbs(dst, dst);
-    cvtColor(dst,dst,CV_GRAY2BGR);
-    for( int j = 0; j < dst.rows ; j++ )
-    {
-        for( int i = 0; i < dst.cols; i++ )
-          {
-            if( (int) mask.at<float>(j,i) > 150 )
-              {
-               circle( dst, Point( i, j ), 5,  Scalar(0,0,255));
-              }
-          }
-     }
-
-    //imshow("peip",dst);
-
-
-    if(!findChessboardCorners(detected,cbsize,corners,fcbflags)){               //finds inner corners based on touching corners of black tiles
-        putText(img,"No board detected",Point(50,50),1, 3,Scalar(0,0,255),3);
-        return img;
-    }
-    ///found at https://docs.opencv.org/3.4.5/d9/d0c/group__calib3d.html#ga93efa9b0aa890de240ca32b11253dd4a
-
+   /*
     vector<vector<Point2f>> tiles;
     vector<Point2f> tile;
     Point2f p;
@@ -161,7 +222,7 @@ Mat detectBoard(Mat img){
         tiles.push_back(tile);
         tile.clear();
     }
-    cvtColor(detected,detected,CV_GRAY2BGR);
+
     for(int i=0;i<tiles.size();i++){
         int e = (i%2);
         line(detected,tiles[i][0],tiles[i][1],Scalar(255*(1-e),0,255*e),2);
@@ -172,7 +233,48 @@ Mat detectBoard(Mat img){
 
 
     */
-    return mask;
+
 
 }
 
+vector<Point2f> selectPoints(vector<Point2f> corners){
+    vector<Point2f> res;
+    Point2f p;
+    int nx,ny;
+    float x,y,x2,y2;
+    for(int i=0;i<corners.size();i++){
+        nx = 0;
+        ny = 0;
+        p = corners[i];
+        x = p.x;
+        y = p.y;
+        for(int j=0;j<corners.size();j++){
+            x2 = corners[j].x;
+            y2 = corners[j].y;
+            if(abs(x-x2) < dth)
+                nx++;
+            if(abs(y-y2) < dth)
+                ny++;
+        }
+        if(nx > nth && ny > nth)
+            res.push_back(p);
+    }
+    return res;
+}
+
+bool removePoint(int x,int y){
+    cout << x << endl;
+    cout << y << endl;
+    Point2f p;
+    for(int i=0;i<lock.size();i++){
+        p = lock[i];
+        if((p.x-20 < x && x < p.x+20) && (p.y-20 < y && y < p.y+20)){
+            lock.erase(lock.begin() + i);
+            cout << i << endl;
+            cout << p.x-20 << endl;
+            cout << p.y << endl;
+            return true;
+        }
+    }
+    return false;
+}
