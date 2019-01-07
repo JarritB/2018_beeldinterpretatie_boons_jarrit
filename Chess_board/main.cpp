@@ -13,6 +13,7 @@ typedef struct tile {   //structure of one tile of the board
     Point2f p3;             // bottom left corner
     Point2f p4;             // bottom right corner
     char piece;             // piece that holds this position
+    Scalar color;
 } Tile;
 
 int thresholdValue = 150;
@@ -26,6 +27,8 @@ const string WNAME3 = "Select leftmost point (LMB)";
 const string WNAME4 = "Select the one right under (LMB)";
 const Scalar GREEN = Scalar(100,255,100);
 const Scalar RED = Scalar(0,0,255);
+const Scalar BLACK = Scalar(0,0,0);
+const Scalar WHITE = Scalar(255,255,255);
 const int TILENUM = 64;
 Point2f lmp;
 Point2f ulmp;
@@ -46,6 +49,8 @@ void sortPoints();
 bool getPoint(int x,int y);
 void initBoard();
 void playChess();
+void initPieces();
+Mat drawBoard(Mat board);
 
 
 static void on_trackbar1(int, void*)
@@ -252,13 +257,14 @@ int main(int argc,const char** argv)
 
     sortPoints();
     res = frame.clone();
+    /*
     for( int i = 0; i < lock.size(); i++ ){
             putText(res,std::to_string(i),lock[i],1,1,RED,1);
     }
     imshow("points sorted",res);
     waitKey(0);
     destroyAllWindows();
-
+    */
     initBoard();
 
     res = frame.clone();
@@ -438,15 +444,18 @@ void initBoard(){
 }
 
 void playChess(){
-    Mat frame,board,res,fgmask,bg;
+    Mat frame,iboard,board,res,fgmask,bg;
     char c;
-    //Ptr<BackgroundSubtractor> pMOG2;
     auto pMOG2 = createBackgroundSubtractorMOG2();
-    pMOG2 -> setBackgroundRatio(0.5);
-    board = imread("board.png");
+    pMOG2 -> setBackgroundRatio(0.5);       //scale down ratio to speed up background calculations
+    pMOG2 -> setHistory(100);               //Sets the number of last frames that affect the background model
+    iboard = imread("board.png");
     cap >> frame;
-    double scale = (double)frame.rows / (double)board.rows;
-    resize(board,board,Size(),scale,scale); //resize to match frame size but maintain aspect ratio
+    double scale = (double)frame.rows / (double)iboard.rows;
+    resize(iboard,iboard,Size(),scale,scale); //resize to match frame size but maintain aspect ratio
+    initPieces();
+    board = drawBoard(iboard.clone());
+    imshow("game board",board);
     waitKey(0);
     while(1)
     {
@@ -459,6 +468,7 @@ void playChess(){
         pMOG2 -> getBackgroundImage(bg);
         erode(fgmask,fgmask,Mat(),Point(-1,-1),1);
         cvtColor(bg,bg,CV_BGR2GRAY);
+
         hconcat(bg,fgmask,res);
         imshow("visualisation",res);
         c = (char)waitKey(25);
@@ -468,3 +478,91 @@ void playChess(){
         }
     }
 }
+
+void initPieces(){
+    Mat frame,fgmask,res;
+    char c;
+    auto pMOG2 = createBackgroundSubtractorMOG2();
+    pMOG2 -> setBackgroundRatio(0.5);       //scale down ratio to speed up background calculations
+    pMOG2 -> setHistory(10000);
+    while(1){
+
+        cap >> frame;                   // Advance frame
+        if (frame.empty()){             // Exit if video(stream) ends
+            cout << "Video ended, program exitted.." <<endl;
+            exit(0);
+        }
+        pMOG2 -> apply(frame,fgmask);
+        erode(fgmask,fgmask,Mat(),Point(-1,-1),2);
+        dilate(fgmask,fgmask,Mat(),Point(-1,-1),5);
+        cvtColor(frame,frame,CV_BGR2GRAY);
+
+        hconcat(frame,fgmask,res);
+        imshow("Make sure all pieces are detected, press ENTER to continue",res);
+
+        c = (char)waitKey(25);
+        if(c==27){
+            cout << "Escape was pressed, program exitted.."  <<endl;
+            exit(0);
+        }
+        else if(c == 13){
+                break;
+        }
+    }
+    destroyAllWindows();
+    Board[0].piece = 'R';
+    Board[1].piece = 'N';
+    Board[2].piece = 'B';
+    Board[3].piece = 'K';
+    Board[4].piece = 'Q';
+    Board[5].piece = 'B';
+    Board[6].piece = 'N';
+    Board[7].piece = 'R';
+    for(int i=8;i<16;i++){
+        Board[i].piece = 'p';
+    }
+    for(int i=0;i<16;i++){
+        Board[i].color = BLACK;
+    }
+    for(int i=16;i<48;i++){
+        Board[i].piece = '0';
+    }
+
+    Board[56].piece = 'R';
+    Board[57].piece = 'N';
+    Board[58].piece = 'B';
+    Board[59].piece = 'Q';
+    Board[60].piece = 'K';
+    Board[61].piece = 'B';
+    Board[62].piece = 'N';
+    Board[63].piece = 'R';
+    for(int i=48;i<56;i++){
+        Board[i].piece = 'p';
+    }
+    for(int i=48;i<64;i++){
+        Board[i].color = WHITE;
+    }
+    return;
+}
+
+Mat drawBoard(Mat board){
+    Point2f p;
+    float tdist = board.rows/16;
+    p.x = tdist;
+    p.y = tdist;
+    int n;
+    for(int i=0;i<8;i++){
+        for(int j=0;j<8;j++){
+            n = 8*i+j;
+            if(Board[n].piece != '0'){
+                putText(board,string(1,Board[n].piece),p,2,1,Board[n].color,2);
+            }
+        p.x += tdist*2;
+        }
+        p.y += tdist*2;
+        p.x = tdist;
+    }
+    return board;
+}
+
+
