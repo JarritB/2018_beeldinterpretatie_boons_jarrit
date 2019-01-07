@@ -13,7 +13,7 @@ typedef struct tile {   //structure of one tile of the board
     Point2f p3;             // bottom left corner
     Point2f p4;             // bottom right corner
     char piece;             // piece that holds this position
-    Scalar color;
+    int color;
 } Tile;
 
 int thresholdValue = 150;
@@ -30,6 +30,7 @@ const Scalar RED = Scalar(0,0,255);
 const Scalar BLACK = Scalar(0,0,0);
 const Scalar WHITE = Scalar(255,255,255);
 const int TILENUM = 64;
+const int FCOUNT = 40;
 Point2f lmp;
 Point2f ulmp;
 vector<Point2f> lock;
@@ -39,6 +40,9 @@ bool proceed2 = false;
 Rect ROI;
 Tile Board[64];
 VideoCapture cap;
+int turncounter;    //odd:white's turn even: black's turn
+int dcounter;
+Mat tframe;
 
 
 //functions
@@ -51,6 +55,10 @@ void initBoard();
 void playChess();
 void initPieces();
 Mat drawBoard(Mat board);
+bool checkDisplacement(Mat fgmask);
+void findTiles(vector <vector<Point>> contours);
+bool inTile(int n,Point2f p);
+void movePiece(int from,int to);
 
 
 static void on_trackbar1(int, void*)
@@ -160,7 +168,6 @@ int main(int argc,const char** argv)
         }
         ///check if we succeeded
     }
-    playChess();
     Mat frame,res;
     char c;
     string pcount;
@@ -446,17 +453,21 @@ void initBoard(){
 void playChess(){
     Mat frame,iboard,board,res,fgmask,bg;
     char c;
+    bool found;
     auto pMOG2 = createBackgroundSubtractorMOG2();
     pMOG2 -> setBackgroundRatio(0.5);       //scale down ratio to speed up background calculations
     pMOG2 -> setHistory(100);               //Sets the number of last frames that affect the background model
     iboard = imread("board.png");
     cap >> frame;
+    tframe = frame.clone();
     double scale = (double)frame.rows / (double)iboard.rows;
     resize(iboard,iboard,Size(),scale,scale); //resize to match frame size but maintain aspect ratio
     initPieces();
     board = drawBoard(iboard.clone());
-    imshow("game board",board);
+    //imshow("board",board);
     waitKey(0);
+    turncounter = 1;
+    dcounter = 0;
     while(1)
     {
         cap >> frame;                   // Advance frame
@@ -466,7 +477,14 @@ void playChess(){
         }
         pMOG2 -> apply(frame,fgmask);
         pMOG2 -> getBackgroundImage(bg);
-        erode(fgmask,fgmask,Mat(),Point(-1,-1),1);
+        erode(fgmask,fgmask,Mat(),Point(-1,-1),2);
+        dilate(fgmask,fgmask,Mat(),Point(-1,-1),5);     //erode and dilate to retain only 2 blobs
+        found = checkDisplacement(fgmask);
+
+        if(found){
+            //movePiece();
+            board = drawBoard(iboard.clone());
+        }
         cvtColor(bg,bg,CV_BGR2GRAY);
 
         hconcat(bg,fgmask,res);
@@ -513,8 +531,8 @@ void initPieces(){
     Board[0].piece = 'R';
     Board[1].piece = 'N';
     Board[2].piece = 'B';
-    Board[3].piece = 'K';
-    Board[4].piece = 'Q';
+    Board[3].piece = 'Q';
+    Board[4].piece = 'K';
     Board[5].piece = 'B';
     Board[6].piece = 'N';
     Board[7].piece = 'R';
@@ -522,12 +540,11 @@ void initPieces(){
         Board[i].piece = 'p';
     }
     for(int i=0;i<16;i++){
-        Board[i].color = BLACK;
+        Board[i].color = 0;
     }
     for(int i=16;i<48;i++){
         Board[i].piece = '0';
     }
-
     Board[56].piece = 'R';
     Board[57].piece = 'N';
     Board[58].piece = 'B';
@@ -540,7 +557,7 @@ void initPieces(){
         Board[i].piece = 'p';
     }
     for(int i=48;i<64;i++){
-        Board[i].color = WHITE;
+        Board[i].color = 1;
     }
     return;
 }
@@ -550,12 +567,13 @@ Mat drawBoard(Mat board){
     float tdist = board.rows/16;
     p.x = tdist;
     p.y = tdist;
-    int n;
+    int n,c;
     for(int i=0;i<8;i++){
         for(int j=0;j<8;j++){
             n = 8*i+j;
             if(Board[n].piece != '0'){
-                putText(board,string(1,Board[n].piece),p,2,1,Board[n].color,2);
+                c = Board[n].color;
+                putText(board,string(1,Board[n].piece),p,2,1,Scalar(255*c,255*c,255*c),2);
             }
         p.x += tdist*2;
         }
@@ -565,4 +583,62 @@ Mat drawBoard(Mat board){
     return board;
 }
 
+bool checkDisplacement(Mat fgmask){
+    vector <vector<Point>> contours;
+    findContours(fgmask, contours, RETR_EXTERNAL, CHAIN_APPROX_NONE);
+    if(contours.size() == 2){
+        dcounter ++;                //increment the counter only if 2 changes are detected
+    }
+    else if(contours.size() < 2){
+        dcounter = 0;               //reset the counter when no changes are detected
+    }
+    if(dcounter >= FCOUNT){             //after X frames with the same changes return true
+        cout << "displacement was found" << endl;
+        turncounter++;
+        dcounter = 0;               //reset counter, since history of bgd was set to 100 the same moce will not be detected again
+        findTiles(contours);        // proceed to find the tiles on which displacement was detected
+        return true;
+    }
+    cout << dcounter << endl;
+    return false;
 
+}
+
+void findTiles(vector <vector<Point>> contours){
+    int from,to;
+    Rect BR;
+    Point2f p;
+    for(int i=0;i<contours.size();i++){
+        BR = boundingRect(contours[i]);
+        p.x = BR.tl().x + BR.width/2;       //calc the center of the blob in the hope it will be on the right tile
+        p.y = BR.tl().y + BR.height/2;
+        for(int j=0;j<TILENUM;j++){
+            if(inTile(j,p)){
+                cout << j << endl;
+                if()
+                break;
+            }
+        }
+    }
+}
+
+bool inTile(int n,Point2f p){
+    Mat temp = Mat::zeros(tframe.rows,tframe.cols,CV_8UC1);
+    line(temp,Board[n].p1,Board[n].p2,Scalar(255),3);
+    line(temp,Board[n].p1,Board[n].p3,Scalar(255),3);
+    line(temp,Board[n].p2,Board[n].p4,Scalar(255),3);
+    line(temp,Board[n].p3,Board[n].p4,Scalar(255),3);
+    vector<vector<Point> > contours;
+    findContours(temp, contours,RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+    imshow("temp",temp);
+    waitKey(0);
+    if(pointPolygonTest(contours[0],p,false) >=0){      //lets us test if a point falls within the shape
+        cout << "found"<<endl;
+        return true;
+    }
+    return false;
+}
+
+void movePiece(int from, int to){
+
+}
