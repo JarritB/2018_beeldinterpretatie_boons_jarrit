@@ -20,7 +20,7 @@ int slider_1 = 150;
 float dth = 5;
 int nth = 8;
 int slider_2 = 1;
-const string WNAME = "Finding keypoints, Enter to continue";
+const string WNAME = "Finding keypoints, continue(ENTER), manual(SPC)";
 const string WNAME2 = "Add (LMB) remove(RMB) continue(ENTER)";
 const string WNAME3 = "Select leftmost point (LMB)";
 const string WNAME4 = "Select the one right under (LMB)";
@@ -35,6 +35,7 @@ bool proceed = false;
 bool proceed2 = false;
 Rect ROI;
 Tile Board[64];
+VideoCapture cap;
 
 
 //functions
@@ -44,6 +45,7 @@ bool removePoint(int x,int y);
 void sortPoints();
 bool getPoint(int x,int y);
 void initBoard();
+void playChess();
 
 
 static void on_trackbar1(int, void*)
@@ -133,7 +135,6 @@ int main(int argc,const char** argv)
 
     string source_location(parser.get<string>("source"));
     ///colect data from arguments
-    VideoCapture cap;
     if(source_location.empty()){
         cout << "Using default camera as video source." << endl;
         cap = VideoCapture(1);
@@ -154,7 +155,8 @@ int main(int argc,const char** argv)
         }
         ///check if we succeeded
     }
-    Mat frame,board,res;
+    playChess();
+    Mat frame,res;
     char c;
     string pcount;
     namedWindow(WNAME);
@@ -182,10 +184,11 @@ int main(int argc,const char** argv)
             cout << "Escape was pressed, program exitted.."  <<endl;
             exit(0);
         }
-        else if(c == 13 && lock.size() > 70 || lock.size() > 79){
+        else if(c == 13 && lock.size() > 70 || lock.size() > 79 || c == 32){
             destroyAllWindows();
             break;
         }
+
     }
     namedWindow(WNAME2,WINDOW_AUTOSIZE);
     setMouseCallback(WNAME2,mClick,0);
@@ -266,16 +269,16 @@ int main(int argc,const char** argv)
         line(res,Board[i].p1,Board[i].p3,Scalar(255,255,255));
         line(res,Board[i].p2,Board[i].p4,Scalar(255,255,255));
         line(res,Board[i].p3,Board[i].p4,Scalar(255,255,255));
-        imshow("Tiles created",res);
     }
-
-
-    waitKey(0);
-
-
+    imshow("Tiles created, if incorrect retry (ESC)",res);
+    c = (char)waitKey(0);
+    if(c==27){
+        cout << "Escape was pressed, program exitted.."  <<endl;
+        exit(0);
+    }
+    playChess();
 
 }
-
 
 void detectBoard(Mat img){
     ///detect the points of the board with the use of Shi-Thomasi
@@ -432,4 +435,36 @@ void initBoard(){
         s++;
     }
     cout << "Board initiated" << endl;
+}
+
+void playChess(){
+    Mat frame,board,res,fgmask,bg;
+    char c;
+    //Ptr<BackgroundSubtractor> pMOG2;
+    auto pMOG2 = createBackgroundSubtractorMOG2();
+    pMOG2 -> setBackgroundRatio(0.5);
+    board = imread("board.png");
+    cap >> frame;
+    double scale = (double)frame.rows / (double)board.rows;
+    resize(board,board,Size(),scale,scale); //resize to match frame size but maintain aspect ratio
+    waitKey(0);
+    while(1)
+    {
+        cap >> frame;                   // Advance frame
+        if (frame.empty()){             // Exit if video(stream) ends
+            cout << "Video ended, program exitted.." <<endl;
+            exit(0);
+        }
+        pMOG2 -> apply(frame,fgmask);
+        pMOG2 -> getBackgroundImage(bg);
+        erode(fgmask,fgmask,Mat(),Point(-1,-1),1);
+        cvtColor(bg,bg,CV_BGR2GRAY);
+        hconcat(bg,fgmask,res);
+        imshow("visualisation",res);
+        c = (char)waitKey(25);
+        if(c==27){
+            cout << "Escape was pressed, program exitted.."  <<endl;
+            exit(0);
+        }
+    }
 }
