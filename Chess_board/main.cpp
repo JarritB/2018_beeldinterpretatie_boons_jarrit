@@ -480,14 +480,12 @@ void playChess(){
         erode(fgmask,fgmask,Mat(),Point(-1,-1),2);
         dilate(fgmask,fgmask,Mat(),Point(-1,-1),5);     //erode and dilate to retain only 2 blobs
         found = checkDisplacement(fgmask);
-
         if(found){
-            //movePiece();
             board = drawBoard(iboard.clone());
         }
-        cvtColor(bg,bg,CV_BGR2GRAY);
-
-        hconcat(bg,fgmask,res);
+        cvtColor(fgmask,fgmask,CV_GRAY2BGR);
+        hconcat(frame,fgmask,res);
+        hconcat(res,board,res);
         imshow("visualisation",res);
         c = (char)waitKey(25);
         if(c==27){
@@ -544,6 +542,7 @@ void initPieces(){
     }
     for(int i=16;i<48;i++){
         Board[i].piece = '0';
+        Board[i].color = -1;
     }
     Board[56].piece = 'R';
     Board[57].piece = 'N';
@@ -594,7 +593,6 @@ bool checkDisplacement(Mat fgmask){
     }
     if(dcounter >= FCOUNT){             //after X frames with the same changes return true
         cout << "displacement was found" << endl;
-        turncounter++;
         dcounter = 0;               //reset counter, since history of bgd was set to 100 the same moce will not be detected again
         findTiles(contours);        // proceed to find the tiles on which displacement was detected
         return true;
@@ -605,7 +603,8 @@ bool checkDisplacement(Mat fgmask){
 }
 
 void findTiles(vector <vector<Point>> contours){
-    int from,to;
+    int from = -1;
+    int to = -1;
     Rect BR;
     Point2f p;
     for(int i=0;i<contours.size();i++){
@@ -615,10 +614,25 @@ void findTiles(vector <vector<Point>> contours){
         for(int j=0;j<TILENUM;j++){
             if(inTile(j,p)){
                 cout << j << endl;
-                if()
+                if(Board[j].color == turncounter%2){
+                    from = j;
+                }
+                else{
+                    to = j;
+                }
                 break;
             }
         }
+    }
+    if(from == -1 || to == -1){
+        cout << "Not a correct move reset pieces and press any key" <<endl;
+        waitKey(0);
+        return;
+    }
+    else{
+        turncounter++;
+        movePiece(from,to);
+        return;
     }
 }
 
@@ -630,8 +644,6 @@ bool inTile(int n,Point2f p){
     line(temp,Board[n].p3,Board[n].p4,Scalar(255),3);
     vector<vector<Point> > contours;
     findContours(temp, contours,RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-    imshow("temp",temp);
-    waitKey(0);
     if(pointPolygonTest(contours[0],p,false) >=0){      //lets us test if a point falls within the shape
         cout << "found"<<endl;
         return true;
@@ -640,5 +652,8 @@ bool inTile(int n,Point2f p){
 }
 
 void movePiece(int from, int to){
-
+    Board[to].piece = Board[from].piece;
+    Board[to].color = Board[from].color;
+    Board[from].color = -1;
+    Board[from].piece = '0';
 }
