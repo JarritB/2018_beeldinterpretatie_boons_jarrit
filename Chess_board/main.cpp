@@ -24,6 +24,8 @@ const string WNAME = "Finding keypoints, Enter to continue";
 const string WNAME2 = "Add (LMB) remove(RMB) continue(ENTER)";
 const string WNAME3 = "Select leftmost point (LMB)";
 const string WNAME4 = "Select the one right under (LMB)";
+const Scalar GREEN = Scalar(100,255,100);
+const Scalar RED = Scalar(0,0,255);
 const int TILENUM = 64;
 Point2f lmp;
 Point2f ulmp;
@@ -170,9 +172,9 @@ int main(int argc,const char** argv)
         res = frame.clone();
         for( int i = 0; i < lock.size(); i++ ){
             pcount = std::to_string(lock.size()) + "/81";
-            circle(res, lock[i],4, Scalar(100,255,100),-1);
+            circle(res, lock[i],4, RED,-1);
             rectangle(res, ROI, Scalar(255,100,100),2);
-            putText(res,pcount ,Point(50,50), 1, 2,Scalar(100,255,100),1);
+            putText(res,pcount ,Point(50,50), 1, 2,RED,1);
         }
         imshow(WNAME,res);
         c = (char)waitKey(25);
@@ -180,7 +182,7 @@ int main(int argc,const char** argv)
             cout << "Escape was pressed, program exitted.."  <<endl;
             exit(0);
         }
-        else if(c == 13 && lock.size() > 70){
+        else if(c == 13 && lock.size() > 70 || lock.size() > 79){
             destroyAllWindows();
             break;
         }
@@ -193,9 +195,9 @@ int main(int argc,const char** argv)
             res = frame.clone();
             for( int i = 0; i < lock.size(); i++ ){
                 pcount = std::to_string(lock.size()) + "/81";
-                circle(res, lock[i],4, Scalar(100,255,100),-1);
+                circle(res, lock[i],4, RED,-1);
                 rectangle(res, ROI, Scalar(255,100,100),2);
-                putText(res,pcount ,Point(50,50), 1, 2,Scalar(100,255,100),1);
+                putText(res,pcount ,Point(50,50), 1, 2,RED,1);
             }
             imshow(WNAME2,res);
         }
@@ -224,7 +226,7 @@ int main(int argc,const char** argv)
             exit(0);
         }
         if(proceed){
-            circle(res,lmp,4, Scalar(0,0,255),-1);
+            circle(res,lmp,4, GREEN,-1);
             destroyAllWindows();
             break;
         }
@@ -248,7 +250,7 @@ int main(int argc,const char** argv)
     sortPoints();
     res = frame.clone();
     for( int i = 0; i < lock.size(); i++ ){
-            putText(res,std::to_string(i),lock[i],1,1,Scalar(100,255,100),1);
+            putText(res,std::to_string(i),lock[i],1,1,RED,1);
     }
     imshow("points sorted",res);
     waitKey(0);
@@ -257,12 +259,7 @@ int main(int argc,const char** argv)
     initBoard();
 
     res = frame.clone();
-    /*
-    for(int i=0;i<TILENUM;i++)
-    {
-        circle(res,Board[i].p1,3,Scalar(255,255,255),-1);
-    }
-    */
+
     for(int i=0;i<64;i++)
     {
         line(res,Board[i].p1,Board[i].p2,Scalar(255,255,255));
@@ -270,7 +267,6 @@ int main(int argc,const char** argv)
         line(res,Board[i].p2,Board[i].p4,Scalar(255,255,255));
         line(res,Board[i].p3,Board[i].p4,Scalar(255,255,255));
         imshow("Tiles created",res);
-        waitKey(0);
     }
 
 
@@ -362,7 +358,7 @@ void sortPoints(){
     ///using a sliding windows detect order of points from L to R and T to B
     vector<Point2f> temp;
     int sw = (ulmp.y-lmp.y)/2;
-
+    bool found = false;
     int xmin = ROI.tl().x + sw;
     int xmax = xmin + ROI.width - sw;
     int ymin = ROI.tl().y + sw;
@@ -376,10 +372,28 @@ void sortPoints(){
                 if((x-sw < p.x && p.x < x+sw) && (y-sw < p.y && p.y < y+sw)){
                     temp.push_back(p);
                     lock.erase(lock.begin() + i);
+                    found = true;
+                }
+            }
+        }
+        if(found)
+            break;  //we have found our first row, which will be used to further callibrate
+    }
+    ymin = temp[1].y + 2*sw; //we only need to set the value of ymin because its our primary check
+
+    for(int y=ymin;y<ymax;y += 2*sw){
+        for(int x=xmin;x<xmax;x += sw){
+            for(int i=0;i<lock.size();i++){
+                p = lock[i];
+                if((x-sw < p.x && p.x < x+sw) && (y-sw < p.y && p.y < y+sw)){
+                    temp.push_back(p);
+                    lock.erase(lock.begin() + i);
                 }
             }
         }
     }
+
+
     cout << "Points sorted" << endl;
     lock = temp;
 }
@@ -407,7 +421,6 @@ void initBoard(){
     int s = 0;
     for(int i=0;i<lock.size() - 9;i++){
         if(s==8){
-            cout << "Continued" <<endl;
             s = 0;
             continue;
         }
@@ -415,7 +428,6 @@ void initBoard(){
         Board[n].p2 = lock[i+1];
         Board[n].p3 = lock[i+9];
         Board[n].p4 = lock[i+10];
-        cout << n <<endl;
         n++;
         s++;
     }
