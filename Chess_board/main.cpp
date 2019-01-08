@@ -452,12 +452,15 @@ void initBoard(){
 
 void playChess(){
     Mat frame,iboard,board,res,fgmask,bg;
+    int fourcc = VideoWriter::fourcc('X','V','I','D');
+    VideoWriter out = VideoWriter("output.avi",fourcc, 1.0,Size(tframe.cols,tframe.rows));
     char c;
     bool found;
     auto pMOG2 = createBackgroundSubtractorMOG2();
-    pMOG2 -> setBackgroundRatio(0.5);       //scale down ratio to speed up background calculations
-    pMOG2 -> setHistory(100);               //Sets the number of last frames that affect the background model
+    pMOG2 -> setBackgroundRatio(0.6);       //scale down ratio to speed up background calculations
+    pMOG2 -> setHistory(150);               //Sets the number of last frames that affect the background model
     iboard = imread("board.png");
+    out.write(iboard);
     cap >> frame;
     tframe = frame.clone();
     double scale = (double)frame.rows / (double)iboard.rows;
@@ -482,6 +485,7 @@ void playChess(){
         found = checkDisplacement(fgmask);
         if(found){
             board = drawBoard(iboard.clone());
+            out.write(board);
             fgmask = Mat::zeros(frame.rows,frame.cols,CV_8UC1);
         }
         if(turncounter%2 == 1){
@@ -498,6 +502,8 @@ void playChess(){
         c = (char)waitKey(25);
         if(c==27){
             cout << "Escape was pressed, program exitted.."  <<endl;
+            cap.release();
+            out.release();
             exit(0);
         }
     }
