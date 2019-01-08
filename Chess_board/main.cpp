@@ -30,7 +30,7 @@ const Scalar RED = Scalar(0,0,255);
 const Scalar BLACK = Scalar(0,0,0);
 const Scalar WHITE = Scalar(255,255,255);
 const int TILENUM = 64;
-const int FCOUNT = 40;
+const int FCOUNT = 30;
 Point2f lmp;
 Point2f ulmp;
 vector<Point2f> lock;
@@ -464,10 +464,10 @@ void playChess(){
     resize(iboard,iboard,Size(),scale,scale); //resize to match frame size but maintain aspect ratio
     initPieces();
     board = drawBoard(iboard.clone());
-    //imshow("board",board);
     waitKey(0);
     turncounter = 1;
     dcounter = 0;
+    string turn = "White's turn";
     while(1)
     {
         cap >> frame;                   // Advance frame
@@ -482,11 +482,19 @@ void playChess(){
         found = checkDisplacement(fgmask);
         if(found){
             board = drawBoard(iboard.clone());
+            fgmask = Mat::zeros(frame.rows,frame.cols,CV_8UC1);
+        }
+        if(turncounter%2 == 1){
+            turn = "White's turn";
+        }
+        else{
+            turn = "Black's turn";
         }
         cvtColor(fgmask,fgmask,CV_GRAY2BGR);
+        putText(fgmask,turn,Point(50,50),2,1,WHITE,2);
         hconcat(frame,fgmask,res);
         hconcat(res,board,res);
-        imshow("visualisation",res);
+        imshow("Visualisation",res);
         c = (char)waitKey(25);
         if(c==27){
             cout << "Escape was pressed, program exitted.."  <<endl;
