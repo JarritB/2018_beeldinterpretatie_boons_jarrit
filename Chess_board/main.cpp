@@ -289,6 +289,7 @@ int main(int argc,const char** argv)
         cout << "Escape was pressed, program exitted.."  <<endl;
         exit(0);
     }
+    destroyAllWindows();
     playChess();
 
 }
